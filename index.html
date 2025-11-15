@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tiện ích Thời tiết Việt Nam</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111827;
+      font-family: "Poppins", system-ui, -apple-system, sans-serif;
+      color: #fff;
+    }
+
+    .weather-widget {
+      width: 100%;
+      max-width: 420px;
+      padding: 18px 18px 20px;
+      border-radius: 22px;
+      background: linear-gradient(145deg, #ffb199 0%, #ff667c 40%, #845ec2 100%);
+      box-shadow:
+        0 20px 35px rgba(0,0,0,0.4),
+        0 0 0 1px rgba(255,255,255,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    @media (max-width: 480px) {
+      .weather-widget {
+        margin: 16px;
+      }
+    }
+
+    /* Lớp trời & animation */
+    .sky-animation {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .sun {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff9c4, #ffeb3b, #f59e0b);
+      top: 40px;
+      right: -10px;
+      opacity: 0;
+      transform-origin: center;
+      animation: sunPulse 6s ease-in-out infinite;
+    }
+
+    @keyframes sunPulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .cloud {
+      position: absolute;
+      width: 160px;
+      height: 70px;
+      background: rgba(255,255,255,0.95);
+      border-radius: 50px;
+      top: 70px;
+      left: -180px;
+      opacity: 0;
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
+      animation: cloudMove 22s linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: inherit;
+      width: 90px;
+      height: 75px;
+      border-radius: 50%;
+      top: -26px;
+    }
+
+    .cloud::before {
+      left: 15px;
+    }
+
+    .cloud::after {
+      right: 5px;
+      top: -20px;
+    }
+
+    @keyframes cloudMove {
+      0% { transform: translateX(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateX(560px); opacity: 0; }
+    }
+
+    .rain-layer {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .raindrop {
+      position: absolute;
+      width: 2px;
+      height: 30px;
+      background: rgba(187,222,251,0.9);
+      top: -40px;
+      left: 0;
+      border-radius: 999px;
+      animation: rainFall 0.9s linear infinite;
+    }
+
+    @keyframes rainFall {
+      0% { transform: translateY(0); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translateY(260px); opacity: 0; }
+    }
+
+    .storm-flash {
+      position: absolute;
+      width: 3px;
+      height: 140%;
+      background: rgba(255,255,255,0.9);
+      top: -20%;
+      left: 50%;
+      transform: skewX(-20deg);
+      opacity: 0;
+      animation: stormFlash 5s linear infinite;
+    }
+
+    @keyframes stormFlash {
+      0%, 92%, 100% { opacity: 0; }
+      93% { opacity: 0.9; }
+      94% { opacity: 0; }
+      95% { opacity: 0.8; }
+      96% { opacity: 0; }
+    }
+
+    .mist-layer {
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 90px;
+      background: radial-gradient(circle at top, rgba(255,255,255,0.75), rgba(255,255,255,0));
+      opacity: 0;
+      animation: mistMove 8s ease-in-out infinite;
+    }
+
+    @keyframes mistMove {
+      0%, 100% { transform: translateX(0); opacity: 0.6; }
+      50% { transform: translateX(-20px); opacity: 0.85; }
+    }
+
+    /* Hiển thị theo trạng thái thời tiết */
+    .sky-animation.sunny .sun { opacity: 1; }
+    .sky-animation.cloudy .cloud { opacity: 1; }
+    .sky-animation.rainy .cloud { opacity: 1; }
+    .sky-animation.rainy .rain-layer { opacity: 1; }
+    .sky-animation.storm .cloud { opacity: 1; }
+    .sky-animation.storm .rain-layer { opacity: 1; }
+    .sky-animation.storm .storm-flash { opacity: 1; }
+    .sky-animation.misty .mist-layer { opacity: 1; }
+
+    /* Nội dung phía trên animation */
+    .content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .search-bar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.35);
+      border-radius: 16px;
+      padding: 6px 10px;
+      backdrop-filter: blur(6px);
+    }
+
+    .search-bar input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      outline: none;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .search-bar input::placeholder {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .search-bar button,
+    .location-btn {
+      border: none;
+      background: rgba(255,255,255,0.35);
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .location-btn {
+      width: 38px;
+      background: rgba(15,23,42,0.7);
+    }
+
+    .main-info {
+      margin-top: 4px;
+      margin-bottom: 14px;
+    }
+
+    .location-text {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .location-text span.flag {
+      font-size: 15px;
+    }
+
+    .temp {
+      font-size: 46px;
+      font-weight: 700;
+      line-height: 1;
+      margin: 6px 0 4px;
+    }
+
+    .temp-range {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .temp-pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.18);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .weather-desc {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.25);
+    }
+
+    .weather-desc span.icon {
+      font-size: 18px;
+    }
+
+    .extra-info {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .info-card {
+      border-radius: 14px;
+      padding: 10px 8px;
+      background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(4px);
+    }
+
+    .info-card:nth-child(1) {
+      background: rgba(15,23,42,0.75);
+    }
+
+    .info-card:nth-child(2) {
+      background: rgba(132, 204, 22, 0.8);
+      color: #111827;
+    }
+
+    .info-card:nth-child(3) {
+      background: rgba(255,255,255,0.8);
+      color: #111827;
+    }
+
+    .info-label {
+      font-size: 11px;
+      opacity: 0.9;
+    }
+
+    .info-value {
+      margin-top: 4px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .status-text {
+      margin-top: 8px;
+      font-size: 11px;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+
+<div class="weather-widget">
+  <!-- Lớp animation bầu trời -->
+  <div class="sky-animation sunny" id="sky">
+    <div class="sun"></div>
+    <div class="cloud"></div>
+
+    <div class="rain-layer" id="rainLayer">
+      <!-- Một số hạt mưa, vị trí random một chút -->
+      <div class="raindrop" style="left:10%; animation-delay: 0s;"></div>
+      <div class="raindrop" style="left:25%; animation-delay: 0.2s;"></div>
+      <div class="raindrop" style="left:40%; animation-delay: 0.1s;"></div>
+      <div class="raindrop" style="left:55%; animation-delay: 0.35s;"></div>
+      <div class="raindrop" style="left:70%; animation-delay: 0.15s;"></div>
+      <div class="raindrop" style="left:83%; animation-delay: 0.28s;"></div>
+    </div>
+
+    <div class="storm-flash"></div>
+    <div class="mist-layer"></div>
+  </div>
+
+  <!-- Nội dung chính -->
+  <div class="content">
+    <!-- Hàng tìm kiếm -->
+    <div class="search-row">
+      <div class="search-bar">
+        <input id="searchInput" type="text" placeholder="Tìm kiếm tỉnh / thành phố ở Việt Nam">
+        <button id="searchBtn" title="Tìm kiếm">🔍</button>
+      </div>
+      <button class="location-btn" id="currentLocationBtn" title="Dùng vị trí hiện tại">📍</button>
+    </div>
+
+    <!-- Thông tin chính -->
+    <div class="main-info">
+      <div class="location-text">
+        <span class="flag">🇻🇳</span>
+        <span id="locationName">Đang xác định vị trí...</span>
+      </div>
+
+      <div class="temp" id="tempValue">--°C</div>
+
+      <div class="temp-range">
+        <span class="temp-pill" id="minTemp">↓ --°C</span>
+        <span class="temp-pill" id="maxTemp">↑ --°C</span>
+      </div>
+
+      <div class="weather-desc">
+        <span class="icon" id="weatherIcon">☀️</span>
+        <span id="weatherText">Chưa có dữ liệu</span>
+      </div>
+    </div>
+
+    <!-- Thông tin phụ -->
+    <div class="extra-info">
+      <div class="info-card">
+        <div class="info-label">Độ ẩm</div>
+        <div class="info-value" id="humidityValue">--%</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Gió</div>
+        <div class="info-value" id="windValue">-- km/h</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Áp suất</div>
+        <div class="info-value" id="pressureValue">-- hPa</div>
+      </div>
+    </div>
+
+    <div class="status-text" id="statusText">
+      Cho phép truy cập vị trí để lấy thời tiết nơi bạn đang đứng.
+    </div>
+  </div>
+</div>
+
+<script>
+  // -------------------------------
+  // CẤU HÌNH
+  // -------------------------------
+  // TODO: THAY BẰNG API KEY CỦA BẠN LẤY TỪ OPENWEATHERMAP
+  const API_KEY = "617c4ee55ebc9a4b8dac0a1a1b8aa49f";
+
+  const API_BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+
+  // -------------------------------
+  // HÀM GỌI API THỜI TIẾT
+  // -------------------------------
+
+  /**
+   * Lấy thời tiết theo toạ độ (lat, lon)
+   */
+  async function fetchWeatherByCoords(lat, lon) {
+    const url = `${API_BASE_URL}?lat=${lat}&lon=${lon}&units=metric&lang=vi&appid=${API_KEY}`;
+    return fetchWeather(url);
+  }
+
+  /**
+   * Lấy thời tiết theo tên thành phố (tỉnh / thành phố ở Việt Nam)
+   */
+  async function fetchWeatherByCity(cityName) {
+    // q=TenThanhPho,VN
+    const q = encodeURIComponent(cityName + ",VN");
+    const url = `${API_BASE_URL}?q=${q}&units=metric&lang=vi&appid=${API_KEY}`;
+    return fetchWeather(url);
+  }
+
+  /**
+   * Hàm chung gọi API và xử lý lỗi
+   */
+  async function fetchWeather(url) {
+    setStatus("Đang tải dữ liệu thời tiết...");
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Không tìm thấy địa điểm. Hãy thử tên tỉnh / thành phố khác.");
+        } else {
+          throw new Error("Không lấy được dữ liệu. Mã lỗi: " + res.status);
+        }
+      }
+      const data = await res.json();
+      updateUIWithWeather(data);
+      setStatus("Đã cập nhật lúc: " + new Date().toLocaleTimeString("vi-VN"));
+    } catch (err) {
+      console.error(err);
+      setStatus("Lỗi: " + err.message);
+    }
+  }
+
+  // -------------------------------
+  // CẬP NHẬT GIAO DIỆN
+  // -------------------------------
+
+  /**
+   * Cập nhật toàn bộ UI khi có dữ liệu thời tiết
+   */
+  function updateUIWithWeather(data) {
+    // Lấy dữ liệu cơ bản
+    const temp = Math.round(data.main.temp * 10) / 10;
+    const tempMin = Math.round(data.main.temp_min * 10) / 10;
+    const tempMax = Math.round(data.main.temp_max * 10) / 10;
+    const humidity = data.main.humidity;
+    const pressure = data.main.pressure;
+    const windMs = data.wind.speed;       // m/s
+    const windKmH = Math.round(windMs * 3.6 * 100) / 100;
+
+    const city = data.name || "Không rõ";
+    const country = data.sys && data.sys.country ? data.sys.country : "VN";
+
+    const weatherMain = data.weather[0].main;        // Clear, Clouds, Rain, ...
+    const weatherDesc = capitalizeFirstLetter(data.weather[0].description);
+
+    // Cập nhật text
+    document.getElementById("locationName").textContent = `${city}, ${country}`;
+    document.getElementById("tempValue").textContent = `${temp}°C`;
+    document.getElementById("minTemp").textContent = `↓ ${tempMin}°C`;
+    document.getElementById("maxTemp").textContent = `↑ ${tempMax}°C`;
+    document.getElementById("humidityValue").textContent = `${humidity}%`;
+    document.getElementById("pressureValue").textContent = `${pressure} hPa`;
+    document.getElementById("windValue").textContent = `${windKmH} km/h`;
+    document.getElementById("weatherText").textContent = weatherDesc;
+
+    // Chọn icon + animation tương ứng
+    const { icon, skyClass } = mapWeatherToStyle(weatherMain, weatherDesc);
+    document.getElementById("weatherIcon").textContent = icon;
+    setSkyMode(skyClass);
+  }
+
+  /**
+   * Đặt nội dung cho status ở dưới cùng
+   */
+  function setStatus(text) {
+    document.getElementById("statusText").textContent = text;
+  }
+
+  /**
+   * Viết hoa chữ cái đầu câu
+   */
+  function capitalizeFirstLetter(str) {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * Map từ trạng thái thời tiết của OpenWeather sang icon + class animation
+   */
+  function mapWeatherToStyle(main, desc) {
+    const sky = { icon: "☀️", skyClass: "sunny" };
+
+    const lowerMain = main.toLowerCase();
+    const lowerDesc = desc.toLowerCase();
+
+    if (lowerMain.includes("cloud")) {
+      sky.icon = "☁️";
+      sky.skyClass = "cloudy";
+    }
+
+    if (lowerMain.includes("rain") || lowerMain.includes("drizzle")) {
+      sky.icon = "🌧️";
+      sky.skyClass = "rainy";
+    }
+
+    if (lowerMain.includes("thunder")) {
+      sky.icon = "⛈️";
+      sky.skyClass = "storm";
+    }
+
+    if (
+      lowerMain.includes("mist") ||
+      lowerMain.includes("fog") ||
+      lowerMain.includes("haze") ||
+      lowerDesc.includes("sương")
+    ) {
+      sky.icon = "🌫️";
+      sky.skyClass = "misty";
+    }
+
+    if (lowerMain.includes("clear")) {
+      sky.icon = "☀️";
+      sky.skyClass = "sunny";
+    }
+
+    return sky;
+  }
+
+  /**
+   * Đổi class của lớp trời để kích hoạt animation tương ứng
+   */
+  function setSkyMode(mode) {
+    const skyEl = document.getElementById("sky");
+    skyEl.className = "sky-animation " + mode;
+  }
+
+  // -------------------------------
+  // XỬ LÝ VỊ TRÍ HIỆN TẠI
+  // -------------------------------
+
+  function requestCurrentLocation() {
+    if (!navigator.geolocation) {
+      setStatus("Trình duyệt của bạn không hỗ trợ xác định vị trí.");
+      return;
+    }
+
+    setStatus("Đang xin quyền truy cập vị trí...");
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setStatus("Đã lấy vị trí. Đang tải thời tiết...");
+        fetchWeatherByCoords(latitude, longitude);
+      },
+      (err) => {
+        console.error(err);
+        setStatus("Không truy cập được vị trí: " + err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 600000
+      }
+    );
+  }
+
+  // -------------------------------
+  // XỬ LÝ TÌM KIẾM TỈNH / THÀNH PHỐ
+  // -------------------------------
+
+  function handleSearch() {
+    const input = document.getElementById("searchInput");
+    const value = input.value.trim();
+    if (!value) {
+      setStatus("Vui lòng nhập tên tỉnh / thành phố ở Việt Nam.");
+      return;
+    }
+    fetchWeatherByCity(value);
+  }
+
+  // -------------------------------
+  // KHỞI TẠO
+  // -------------------------------
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const searchBtn = document.getElementById("searchBtn");
+    const searchInput = document.getElementById("searchInput");
+    const currentLocationBtn = document.getElementById("currentLocationBtn");
+
+    searchBtn.addEventListener("click", handleSearch);
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        handleSearch();
+      }
+    });
+
+    currentLocationBtn.addEventListener("click", requestCurrentLocation);
+
+    // Tự động xin quyền vị trí khi mở trang
+    requestCurrentLocation();
+  });
+</script>
+
+</body>
+</html>
