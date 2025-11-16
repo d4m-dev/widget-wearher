@@ -129,17 +129,22 @@
     // ==========================
     // TEMPLATE + CSS
     // ==========================
-    renderTemplate() {
-      return `
+renderTemplate() {
+  return `
 <style>
   :host {
-    display: inline-block;
+    display: block;
+    /* Chiều ngang: luôn ôm theo màn hình, chừa 8px mỗi bên */
+    width: 100%;
+    padding: 0 8px;
+    box-sizing: border-box;
     font-family: "Poppins", system-ui, -apple-system, sans-serif;
   }
 
   .vnw-widget{
-    width: 360px;
-    max-width: 100%;
+    width: 100%;
+    max-width: 480px; /* Giới hạn tối đa cho đẹp trên tablet/desktop */
+    margin: 0 auto;
     padding: 18px 18px 20px;
     border-radius: 22px;
     background: linear-gradient(145deg,#ffb199 0%,#ff667c 40%,#845ec2 100%);
